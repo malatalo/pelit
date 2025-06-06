@@ -136,7 +136,19 @@
                 "Sattuma",
                 "Jatsi",
                 "Summa"
-            ]
+            ];
+
+            const cutoff = 178;
+            const resizeStuff = () => {
+                const el = document.querySelector("#grid > div:nth-child(2)");
+                const columns = playerScores.length + 1;
+                const availableWidth = window.innerWidth - 16;
+                const requiredWidth = cutoff * columns;
+
+                if (availableWidth < requiredWidth) {
+                    el.style.paddingLeft = `${requiredWidth - availableWidth}px`;
+                }
+            };
 
             const closePopover = () => {
                 const pop = document.getElementById("settings");
@@ -239,7 +251,7 @@
                             playerScores.push(player)
                             newColumn(player, index)
                         })
-                        
+                        resizeStuff()
                         return
                     }
                 }
@@ -247,6 +259,7 @@
                 for (let i = 0; i < playerCount; i++) newPlayer();
 
                 localStorage.setItem("jatsi", JSON.stringify(playerScores));
+                resizeStuff();
             }
 
             const askForNewGame = () => {
@@ -261,18 +274,6 @@
 
             newGame(-1)
 
-            const cutoff = 178;
-
-            const resizeStuff = () => {
-                const el = document.querySelector("#grid > div:nth-child(2)");
-                const columns = playerScores.length + 1;
-                const availableWidth = window.innerWidth - 16;
-                const requiredWidth = cutoff * columns;
-
-                if (availableWidth < requiredWidth) {
-                    el.style.paddingLeft = `${requiredWidth - availableWidth}px`;
-                }
-            };
             resizeStuff()
             addEventListener("resize", resizeStuff)
         </script>
