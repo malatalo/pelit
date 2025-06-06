@@ -1,0 +1,280 @@
+<html>
+    <head>
+        <title>
+            Jatsi
+        </title>
+        <style>
+            body {
+                font-family: 'Segoe UI', sans-serif;
+                background-color: #A7C7E7;
+            }
+            .stickystuff{
+                position: sticky;
+            }
+            #grid {
+                display: flex;
+                overflow: scroll;
+                position: relative;
+                max-width: calc(100vw - 16px);
+                max-height: calc(100vh -16px);
+            }
+            #grid > div:nth-child(2){
+                left: 160px;
+            }
+            #combinationsContainer {
+                position: sticky;
+                left: 0;
+                z-index: 1; /* Make sure it sits above other elements */
+            }
+            .container {
+                display: flex;
+                justify-content: center;
+                gap: 1.5rem;
+                width: fit-content;
+                margin: auto;
+            }
+            .cell {
+                text-align: center;
+                transition: background-color 0.2s ease;
+                width: 10rem;
+                height: 3rem;
+                line-height: 3rem;
+                background-color: #fff;
+                border: none;
+                box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            }
+            .cell:nth-child(1) {
+                background-color: #333;
+                color: white;
+                text-align: center;
+                font-weight: bold;
+            }
+            .cell:nth-child(2), .cell:nth-child(8), .cell:nth-child(10), .cell:nth-child(14), .cell:nth-child(16), .cell:nth-child(19) {
+                margin-top: 1rem;
+            }
+            .cell:nth-child(even) {
+                background-color: #f6f6f6;
+            }
+            .cell:nth-child(8), .cell:nth-child(19) {
+                background-color: #c2edcf;
+            }
+            .cell:hover {
+                background-color: #dbdde0;
+            }
+            #settings {
+                border: none;
+                background: none;
+            }
+            #settings>div {
+                margin:2rem;
+                padding: 3rem;
+                background: white;
+                border: 1px solid #ddd;
+                border-radius: 12px;
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+                width: 200px;
+                font-family: sans-serif;
+                display: flex;
+                flex-direction: column;
+                gap: 2rem;
+                
+            }
+            #settings .menuitem {
+                background: #dbdde0;
+                border: none;
+                border-radius: 8px;
+                padding: 0.6rem 1rem;
+                cursor: pointer;
+                font-size: 1rem;
+                transition: background 0.2s ease, transform 0.1s ease;
+                text-align: center;
+            }
+            #settings .menuitem:hover {
+                background: #e0e0e0;
+                transform: scale(1.02);
+            }
+            #settings .menuitem:active {
+                background: #d0d0d0;
+                transform: scale(0.98);
+            }
+        </style>
+    </head>
+    <body>
+        <div id="grid" class="container"></div>
+
+        <div popover="auto" id="settings">
+            <div>
+                <button class="menuitem" onclick="newPlayer()">Lisää pelaaja</button>
+                <button class="menuitem" onclick="askForNewGame()">Uusi peli</button>
+                <button class="menuitem" onclick="closePopover()">Sulje</button>
+            </div>
+        </div>
+
+        <script>
+            const playerScores = [];
+            let saveTimeout;
+            const grid = document.getElementById("grid");
+            const midSumIndex = 6;
+            const bonusIndex = 7;
+            const finalSumIndex = 17;
+            const combinations = [
+                "Ykköset",
+                "Kakkoset",
+                "Kolmoset",
+                "Neloset",
+                "Vitoset",
+                "Kutoset",
+                "Välisumma",
+                "Bonus",
+                "Pari",
+                "Kaksi paria",
+                "Kolme samaa",
+                "Neljä samaa",
+                "Pieni suora",
+                "Iso suora",
+                "Täyskäsi",
+                "Sattuma",
+                "Jatsi",
+                "Summa"
+            ]
+
+            const closePopover = () => {
+                const pop = document.getElementById("settings");
+                if (pop && pop.hidePopover) pop.hidePopover();
+            }
+
+            const newPlayer = () => {
+                const combs = combinations.reduce((ac,a) => ({...ac,[a]: null}),{});
+                const player = {name: "pelaaja", ...combs};
+                playerScores.push(player)
+                newColumn(player, playerScores.length - 1)
+            }
+            
+            const handleInputChange = (event) => {
+                const index = event.target.dataset.index;
+                const key = event.target.dataset.key;
+                const value = event.target.value;
+
+                const original = playerScores[index][key];
+                playerScores[index][key] = typeof original === "number" ? Number(value) : value;
+
+
+
+                const midSumInput = document.querySelector(`input[data-index="${index}"][data-key="Välisumma"]`);
+                const bonusInput = document.querySelector(`input[data-index="${index}"][data-key="Bonus"]`);
+                const finalSumInput = document.querySelector(`input[data-index="${index}"][data-key="Summa"]`);
+
+                let midSum = 0;
+                for(i = 0; i < midSumIndex; i++) midSum += parseInt(playerScores[index][combinations[i]]) || 0;
+
+                let bonus = midSum >= 63 ? 50 : 0
+
+                let finalSum = 0;
+                for(i = bonusIndex + 1; i < combinations.length-1; i++) finalSum += parseInt(playerScores[index][combinations[i]]) || 0;
+
+                midSumInput.value=midSum;
+                bonusInput.value=bonus;
+                finalSumInput.value=midSum + bonus + finalSum;
+
+                playerScores[index][combinations[midSumIndex]] = midSum;
+                playerScores[index][combinations[bonusIndex]] = bonus;
+                playerScores[index][combinations[finalSumIndex]] = finalSum;
+                
+                clearTimeout(saveTimeout);
+                
+                saveTimeout = setTimeout(() => {
+                    console.log("saved", playerScores)
+                    localStorage.setItem("jatsi", JSON.stringify(playerScores));
+                }, 1000);
+            }
+
+            const newColumn = (player, index) => {
+                const column = document.createElement("div");
+                column.style.display = "flex";
+                column.style.flexDirection = "column";
+
+                for (const key in player) {
+                    const input = document.createElement("input");
+                    if(key === "name") input.classList.add("stickystuff");
+                    input.value = player[key];
+                    input.dataset.index = index;
+                    input.dataset.key = key;
+                    if(key.includes("umma") || key === "Bonus") input.disabled = true;
+                    input.classList.add("cell")
+                    input.addEventListener("input", handleInputChange);
+                    column.appendChild(input);
+                }
+
+                grid.appendChild(column);
+            }
+
+            const newGame = (playerCount) => {
+                grid.innerHTML = "";
+                playerScores.length = 0;
+                
+
+                const combinationsContainer = document.createElement("div");
+                combinationsContainer.id = "combinationsContainer"
+                const button = document.createElement("button")
+                button.innerText = "Jatsi"
+                button.onclick= () => document.getElementById("settings").togglePopover()
+                button.classList.add("cell")
+                combinationsContainer.appendChild(button);
+
+                combinations.forEach(combinationName => {
+                    const combination = document.createElement("div");
+                    combination.innerText = combinationName;
+                    combination.classList.add("cell")
+                    combinationsContainer.appendChild(combination)
+                })
+
+                grid.appendChild(combinationsContainer)
+
+                if(playerCount === -1) {
+                    const stored = localStorage.getItem("jatsi")
+                    const parsed = JSON.parse(stored)
+                    console.log(parsed)
+                    if(Array.isArray(parsed)){
+                        parsed.forEach((player, index) => {
+                            playerScores.push(player)
+                            newColumn(player, index)
+                        })
+                        
+                        return
+                    }
+                }
+
+                for (let i = 0; i < playerCount; i++) newPlayer();
+
+                localStorage.setItem("jatsi", JSON.stringify(playerScores));
+            }
+
+            const askForNewGame = () => {
+                document.getElementById("settings").hidePopover()
+
+                const playerCount = prompt("Kuinka monta pelaajaa?");
+                
+                if(playerCount === null) return;
+                
+                newGame(playerCount)
+            }
+
+            newGame(-1)
+
+            const cutoff = 178;
+
+            const resizeStuff = () => {
+                const el = document.querySelector("#grid > div:nth-child(2)");
+                const columns = playerScores.length + 1;
+                const availableWidth = window.innerWidth - 16;
+                const requiredWidth = cutoff * columns;
+
+                if (availableWidth < requiredWidth) {
+                    el.style.paddingLeft = `${requiredWidth - availableWidth}px`;
+                }
+            };
+            resizeStuff()
+            addEventListener("resize", resizeStuff)
+        </script>
+    </body>
+</html>
